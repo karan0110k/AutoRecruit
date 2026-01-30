@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+    <h3>Admin Dashboard</h3>
+    <p>Manage applications and generate job postings.</p>
+
+    <h3>Dashboard Overview</h3>
+    
+    <!-- This is the complete stats grid -->
+    <div class="stats-grid">
+        <div class="card stat-card">Total: {{ stats.total }}</div>
+        <div class="card stat-card status-shortlisted">Shortlisted: {{ stats.shortlisted }}</div>
+        <div class="card stat-card status-rejected">Rejected: {{ stats.rejected }}</div>
+        <div class="card stat-card status-needs-review">Needs Review: {{ stats.review }}</div>
+        <div class="card stat-card status-pending">Pending: {{ stats.pending }}</div>
+    </div>
+
+    <!-- The chart card comes after the stats -->
+    <div class="card">
+        <h2>Top 10 Applicant Skills</h2>
+        <!-- This canvas is where the chart will be drawn -->
+        <canvas id="skillChart" style="max-height: 300px;"></canvas>
+    </div>
+
+    <hr>
+    
+    <!-- AI Job Post Generator section -->
+    <div class="grid-2">
+        <div class="card">
+            <h4>🤖 AI Job Post Generator</h4>
+            <form action="{{ url_for('generate_job_post') }}" method="POST">
+                <div class="form-group">
+                    <label for="job_title">Job Title</label>
+                    <input type="text" id="job_title" name="job_title" required>
+                </div>
+                <div class="form-group">
+                    <label for="skills">Key Skills (comma-separated)</label>
+                    <input type="text" id="skills" name="skills" placeholder="e.g., Python, Flask, SQL" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Short Description</label>
+                    <textarea id="description" name="description" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">Generate Post</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h4>Generated Job Post</h4>
+            {% if generated_post %}
+                <textarea class="job-post-output" rows="15" readonly>{{ generated_post }}</textarea>
+            {% else %}
+                <p>Your generated job post will appear here...</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- Candidate List section -->
+    <h3>Candidate List</h3>
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Candidate</th>
+                    <th>Email</th>
+                    <th>Position</th>
+                    <th>AI Score</th>
+                    <th>Status</th>
+                    <th>Resume</th>
+                    <th>Action (Human-in-the-loop)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in applications %}
+                <tr>
+                    <td>{{ app.applicant.name or 'N/A' }}</td>
+                    <td>{{ app.applicant.email }}</td>
+                    <td>{{ app.job.title }}</td>
+                    <td><b>{{ app.ai_score }}%</b></td>
+                    <td><span class="status {{ app.status.lower().replace(' ', '-') }}">{{ app.status }}</span></td>
+                    <td><a href="{{ url_for('view_resume', filename=app.resume_filename) }}" target="_blank">View PDF</a></td>
+                    <td>
+                        <form action="{{ url_for('update_status', app_id=app.id) }}" method="POST">
+                            <select name="status">
+                                <option value="Shortlisted" {% if app.status == 'Shortlisted' %}selected{% endif %}>Shortlist</option>
+                                <option value="Rejected" {% if app.status == 'Rejected' %}selected{% endif %}>Reject</option>
+                                <option value="Needs Review" {% if app.status == 'Needs Review' %}selected{% endif %}>Needs Review</option>
+                            </select>
+                            <label><input type="checkbox" name="send_email"> Send Email?</label>
+                            <button type="submit" class="btn btn-small">Update</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- This is the JavaScript to draw the chart -->
+    <script>
+    // Wait for the page to be fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // Fetch data from our new API endpoint
+        fetch('/api/skill-stats')
+            .then(response => response.json())
+            .then(skillData => {
+                // Check if we actually got data
+                if (skillData && skillData.labels && skillData.labels.length > 0) {
+                    const ctx = document.getElementById('skillChart').getContext('2d');
+
+                    new Chart(ctx, {
+                        type: 'bar', // We'll make a bar chart
+                        data: {
+                            labels: skillData.labels, // Skill names
+                            datasets: [{
+                                label: '# of Applicants',
+                                data: skillData.data, // Skill counts
+                                backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                                borderColor: 'rgba(0, 123, 255, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false, // Allows us to set a max-height in CSS
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        // Ensure only whole numbers are shown on the axis
+                                        stepSize: 1
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // If no data, show a message
+                    document.getElementById('skillChart').parentElement.innerHTML = "<p>No skill data to display yet. Upload some resumes!</p>";
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching skill stats:', error);
+                document.getElementById('skillChart').parentElement.innerHTML = "<p>Could not load chart data.</p>";
+            });
+    });
+</script>
+
+{% endblock %}

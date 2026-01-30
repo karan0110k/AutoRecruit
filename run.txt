@@ -1,0 +1,2 @@
+terminal 1 -> flask run
+terminal 2-> OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES rq worker

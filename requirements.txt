@@ -1,0 +1,8 @@
+Flask
+Flask-Login
+Flask-SQLAlchemy
+SQLAlchemy
+groq
+pdfminer.six
+python-dotenv
+werkzeug
