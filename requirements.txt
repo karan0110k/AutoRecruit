@@ -6,3 +6,5 @@ groq
 pdfminer.six
 python-dotenv
 werkzeug
+gunicorn
+Flask
