@@ -8,3 +8,4 @@ python-dotenv
 werkzeug
 gunicorn
 Flask
+redis
